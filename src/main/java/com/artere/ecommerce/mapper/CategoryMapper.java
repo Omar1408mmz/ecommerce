@@ -24,36 +24,38 @@ public class CategoryMapper {
         if (category == null) {
             return null;
         }
-        
-        CategoryDTO dto = new CategoryDTO();
-        dto.setId(category.getId());
-        dto.setName(category.getName());
-        dto.setDescription(category.getDescription());
-        
-        // Set parent ID if parent exists
+
+        // Get parent ID if parent exists
+        Long parentId = null;
         if (category.getParent() != null) {
-            dto.setParentId(category.getParent().getId());
+            parentId = category.getParent().getId();
         }
-        
-        // Set subcategory IDs
-        if (category.getSubcategories() != null) {
-            Set<Long> subcategoryIds = category.getSubcategories().stream()
-                    .map(Category::getId)
-                    .collect(Collectors.toSet());
-            dto.setSubcategoryIds(subcategoryIds);
-        }
-        
-        // Set product IDs
-        if (category.getProducts() != null) {
-            Set<Long> productIds = category.getProducts().stream()
-                    .map(Product::getId)
-                    .collect(Collectors.toSet());
-            dto.setProductIds(productIds);
-        }
-        
-        return dto;
+
+        // Get subcategory IDs
+        Set<Long> subcategoryIds = category.getSubcategories() != null ?
+                category.getSubcategories().stream()
+                        .map(Category::getId)
+                        .collect(Collectors.toSet()) :
+                null;
+
+        // Get product IDs
+        Set<Long> productIds = category.getProducts() != null ?
+                category.getProducts().stream()
+                        .map(Product::getId)
+                        .collect(Collectors.toSet()) :
+                null;
+
+        // Create a new CategoryDTO using the constructor
+        return new CategoryDTO(
+            category.getId(),
+            category.getName(),
+            category.getDescription(),
+            parentId,
+            subcategoryIds,
+            productIds
+        );
     }
-    
+
     /**
      * Convert a list of Category entities to a list of CategoryDTOs
      * @param categories the list of entities to convert
@@ -63,12 +65,12 @@ public class CategoryMapper {
         if (categories == null) {
             return null;
         }
-        
+
         return categories.stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
-    
+
     /**
      * Convert a CategoryDTO to a Category entity
      * Note: This method does not set relationships (parent, subcategories, products)
@@ -80,15 +82,15 @@ public class CategoryMapper {
         if (dto == null) {
             return null;
         }
-        
+
         Category category = new Category();
-        category.setId(dto.getId());
-        category.setName(dto.getName());
-        category.setDescription(dto.getDescription());
-        
+        category.setId(dto.id());
+        category.setName(dto.name());
+        category.setDescription(dto.description());
+
         return category;
     }
-    
+
     /**
      * Update an existing Category entity with data from a CategoryDTO
      * Note: This method does not update relationships (parent, subcategories, products)
@@ -101,15 +103,15 @@ public class CategoryMapper {
         if (category == null || dto == null) {
             return category;
         }
-        
-        if (dto.getName() != null) {
-            category.setName(dto.getName());
+
+        if (dto.name() != null) {
+            category.setName(dto.name());
         }
-        
-        if (dto.getDescription() != null) {
-            category.setDescription(dto.getDescription());
+
+        if (dto.description() != null) {
+            category.setDescription(dto.description());
         }
-        
+
         return category;
     }
 }

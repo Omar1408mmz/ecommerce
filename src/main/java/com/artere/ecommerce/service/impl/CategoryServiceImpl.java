@@ -1,6 +1,8 @@
 package com.artere.ecommerce.service.impl;
 
 import com.artere.ecommerce.dto.CategoryDTO;
+import com.artere.ecommerce.dto.PageDTO;
+import com.artere.ecommerce.exception.ResourceNotFoundException;
 import com.artere.ecommerce.mapper.CategoryMapper;
 import com.artere.ecommerce.model.Category;
 import com.artere.ecommerce.model.Product;
@@ -8,6 +10,8 @@ import com.artere.ecommerce.repository.CategoryRepository;
 import com.artere.ecommerce.repository.ProductRepository;
 import com.artere.ecommerce.service.CategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +39,13 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    public PageDTO<CategoryDTO> getAllCategories(Pageable pageable) {
+        Page<Category> categoryPage = categoryRepository.findAll(pageable);
+        Page<CategoryDTO> dtoPage = categoryPage.map(categoryMapper::toDTO);
+        return PageDTO.fromPage(dtoPage);
+    }
+
+    @Override
     public Optional<CategoryDTO> getCategoryById(Long id) {
         return categoryRepository.findById(id)
                 .map(categoryMapper::toDTO);
@@ -44,18 +55,18 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     public CategoryDTO saveCategory(CategoryDTO categoryDTO) {
         Category category;
-        if (categoryDTO.getId() != null) {
+        if (categoryDTO.id() != null) {
 
-            category = categoryRepository.findById(categoryDTO.getId())
-                    .orElseThrow(() -> new IllegalArgumentException("Category not found with id: " + categoryDTO.getId()));
+            category = categoryRepository.findById(categoryDTO.id())
+                    .orElseThrow(() -> new ResourceNotFoundException("Category", "id", categoryDTO.id()));
 
             category = categoryMapper.updateEntityFromDTO(category, categoryDTO);
         } else {
             category = categoryMapper.toEntity(categoryDTO);
         }
 
-        if (categoryDTO.getParentId() != null) {
-            categoryRepository.findById(categoryDTO.getParentId())
+        if (categoryDTO.parentId() != null) {
+            categoryRepository.findById(categoryDTO.parentId())
                     .ifPresent(category::setParent);
         } else {
 
@@ -79,9 +90,23 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    public PageDTO<CategoryDTO> getRootCategories(Pageable pageable) {
+        Page<Category> categoryPage = categoryRepository.findByParentIsNull(pageable);
+        Page<CategoryDTO> dtoPage = categoryPage.map(categoryMapper::toDTO);
+        return PageDTO.fromPage(dtoPage);
+    }
+
+    @Override
     public List<CategoryDTO> getSubcategories(Long parentId) {
         List<Category> subcategories = categoryRepository.findByParentId(parentId);
         return categoryMapper.toDTOList(subcategories);
+    }
+
+    @Override
+    public PageDTO<CategoryDTO> getSubcategories(Long parentId, Pageable pageable) {
+        Page<Category> categoryPage = categoryRepository.findByParentId(parentId, pageable);
+        Page<CategoryDTO> dtoPage = categoryPage.map(categoryMapper::toDTO);
+        return PageDTO.fromPage(dtoPage);
     }
 
     @Override
@@ -91,13 +116,20 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    public PageDTO<CategoryDTO> searchCategoriesByName(String name, Pageable pageable) {
+        Page<Category> categoryPage = categoryRepository.findByNameContainingIgnoreCase(name, pageable);
+        Page<CategoryDTO> dtoPage = categoryPage.map(categoryMapper::toDTO);
+        return PageDTO.fromPage(dtoPage);
+    }
+
+    @Override
     @Transactional
     public void addProductToCategory(Long categoryId, Long productId) {
-        Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Category not found with id: " + categoryId));
+        Category category = categoryRepository.findByIdWithProducts(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Category", "id", categoryId));
 
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found with id: " + productId));
+        Product product = productRepository.findByIdWithCategories(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "id", productId));
 
         category.addProduct(product);
         categoryRepository.save(category);
@@ -106,11 +138,11 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Transactional
     public void removeProductFromCategory(Long categoryId, Long productId) {
-        Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Category not found with id: " + categoryId));
+        Category category = categoryRepository.findByIdWithProducts(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Category", "id", categoryId));
 
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found with id: " + productId));
+        Product product = productRepository.findByIdWithCategories(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "id", productId));
 
         category.removeProduct(product);
         categoryRepository.save(category);
@@ -119,11 +151,11 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Transactional
     public void addSubcategory(Long parentId, Long subcategoryId) {
-        Category parent = categoryRepository.findById(parentId)
-                .orElseThrow(() -> new IllegalArgumentException("Parent category not found with id: " + parentId));
+        Category parent = categoryRepository.findByIdWithSubcategories(parentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Category", "id", parentId));
 
         Category subcategory = categoryRepository.findById(subcategoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Subcategory not found with id: " + subcategoryId));
+                .orElseThrow(() -> new ResourceNotFoundException("Category", "id", subcategoryId));
 
         parent.addSubcategory(subcategory);
         categoryRepository.save(parent);
@@ -132,11 +164,11 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Transactional
     public void removeSubcategory(Long parentId, Long subcategoryId) {
-        Category parent = categoryRepository.findById(parentId)
-                .orElseThrow(() -> new IllegalArgumentException("Parent category not found with id: " + parentId));
+        Category parent = categoryRepository.findByIdWithSubcategories(parentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Category", "id", parentId));
 
         Category subcategory = categoryRepository.findById(subcategoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Subcategory not found with id: " + subcategoryId));
+                .orElseThrow(() -> new ResourceNotFoundException("Category", "id", subcategoryId));
 
         parent.removeSubcategory(subcategory);
         categoryRepository.save(parent);

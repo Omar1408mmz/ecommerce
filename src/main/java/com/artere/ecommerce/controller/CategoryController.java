@@ -1,6 +1,8 @@
 package com.artere.ecommerce.controller;
 
 import com.artere.ecommerce.dto.CategoryDTO;
+import com.artere.ecommerce.dto.PageDTO;
+import com.artere.ecommerce.exception.ResourceNotFoundException;
 import com.artere.ecommerce.service.CategoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -10,6 +12,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,24 +33,48 @@ public class CategoryController {
         this.categoryService = categoryService;
     }
 
-    @Operation(summary = "Get all categories", description = "Retrieves a list of all categories in the system")
+    @Operation(summary = "Get all categories", description = "Retrieves a paginated list of all categories in the system")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved all categories",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = CategoryDTO.class)))
+                content = @Content(mediaType = "application/json", schema = @Schema(implementation = PageDTO.class)))
     })
     @GetMapping
-    public ResponseEntity<List<CategoryDTO>> getAllCategories() {
-        return ResponseEntity.ok(categoryService.getAllCategories());
+    public ResponseEntity<PageDTO<CategoryDTO>> getAllCategories(
+            @Parameter(description = "Page number (0-based)", schema = @Schema(type = "integer", defaultValue = "0"))
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Number of items per page", schema = @Schema(type = "integer", defaultValue = "10"))
+            @RequestParam(defaultValue = "10") int size,
+            @Parameter(description = "Sort field", schema = @Schema(type = "string", defaultValue = "id"))
+            @RequestParam(defaultValue = "id") String sort,
+            @Parameter(description = "Sort direction (asc or desc)", schema = @Schema(type = "string", defaultValue = "asc"))
+            @RequestParam(defaultValue = "asc") String direction) {
+
+        Sort.Direction sortDirection = direction.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sort));
+
+        return ResponseEntity.ok(categoryService.getAllCategories(pageable));
     }
 
-    @Operation(summary = "Get root categories", description = "Retrieves a list of all root categories (categories without a parent)")
+    @Operation(summary = "Get root categories", description = "Retrieves a paginated list of all root categories (categories without a parent)")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved root categories",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = CategoryDTO.class)))
+                content = @Content(mediaType = "application/json", schema = @Schema(implementation = PageDTO.class)))
     })
     @GetMapping("/root")
-    public ResponseEntity<List<CategoryDTO>> getRootCategories() {
-        return ResponseEntity.ok(categoryService.getRootCategories());
+    public ResponseEntity<PageDTO<CategoryDTO>> getRootCategories(
+            @Parameter(description = "Page number (0-based)", schema = @Schema(type = "integer", defaultValue = "0"))
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Number of items per page", schema = @Schema(type = "integer", defaultValue = "10"))
+            @RequestParam(defaultValue = "10") int size,
+            @Parameter(description = "Sort field", schema = @Schema(type = "string", defaultValue = "id"))
+            @RequestParam(defaultValue = "id") String sort,
+            @Parameter(description = "Sort direction (asc or desc)", schema = @Schema(type = "string", defaultValue = "asc"))
+            @RequestParam(defaultValue = "asc") String direction) {
+
+        Sort.Direction sortDirection = direction.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sort));
+
+        return ResponseEntity.ok(categoryService.getRootCategories(pageable));
     }
 
     @Operation(summary = "Get category by ID", description = "Retrieves a specific category by its ID")
@@ -57,31 +86,55 @@ public class CategoryController {
     @GetMapping("/{id}")
     public ResponseEntity<CategoryDTO> getCategoryById(
             @Parameter(description = "ID of the category to retrieve", required = true) @PathVariable Long id) {
-        return categoryService.getCategoryById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        CategoryDTO categoryDTO = categoryService.getCategoryById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Category", "id", id));
+        return ResponseEntity.ok(categoryDTO);
     }
 
-    @Operation(summary = "Get subcategories", description = "Retrieves all subcategories of a specific category")
+    @Operation(summary = "Get subcategories", description = "Retrieves a paginated list of subcategories of a specific category")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved subcategories",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = CategoryDTO.class)))
+                content = @Content(mediaType = "application/json", schema = @Schema(implementation = PageDTO.class)))
     })
     @GetMapping("/{id}/subcategories")
-    public ResponseEntity<List<CategoryDTO>> getSubcategories(
-            @Parameter(description = "ID of the parent category", required = true) @PathVariable Long id) {
-        return ResponseEntity.ok(categoryService.getSubcategories(id));
+    public ResponseEntity<PageDTO<CategoryDTO>> getSubcategories(
+            @Parameter(description = "ID of the parent category", required = true) @PathVariable Long id,
+            @Parameter(description = "Page number (0-based)", schema = @Schema(type = "integer", defaultValue = "0"))
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Number of items per page", schema = @Schema(type = "integer", defaultValue = "10"))
+            @RequestParam(defaultValue = "10") int size,
+            @Parameter(description = "Sort field", schema = @Schema(type = "string", defaultValue = "id"))
+            @RequestParam(defaultValue = "id") String sort,
+            @Parameter(description = "Sort direction (asc or desc)", schema = @Schema(type = "string", defaultValue = "asc"))
+            @RequestParam(defaultValue = "asc") String direction) {
+
+        Sort.Direction sortDirection = direction.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sort));
+
+        return ResponseEntity.ok(categoryService.getSubcategories(id, pageable));
     }
 
     @Operation(summary = "Search categories by name", description = "Searches for categories containing the given name")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved matching categories",
-                content = @Content(mediaType = "application/json", schema = @Schema(implementation = CategoryDTO.class)))
+                content = @Content(mediaType = "application/json", schema = @Schema(implementation = PageDTO.class)))
     })
     @GetMapping("/search")
-    public ResponseEntity<List<CategoryDTO>> searchCategoriesByName(
-            @Parameter(description = "Name to search for", required = true) @RequestParam String name) {
-        return ResponseEntity.ok(categoryService.searchCategoriesByName(name));
+    public ResponseEntity<PageDTO<CategoryDTO>> searchCategoriesByName(
+            @Parameter(description = "Name to search for", required = true) @RequestParam String name,
+            @Parameter(description = "Page number (0-based)", schema = @Schema(type = "integer", defaultValue = "0"))
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Number of items per page", schema = @Schema(type = "integer", defaultValue = "10"))
+            @RequestParam(defaultValue = "10") int size,
+            @Parameter(description = "Sort field", schema = @Schema(type = "string", defaultValue = "id"))
+            @RequestParam(defaultValue = "id") String sort,
+            @Parameter(description = "Sort direction (asc or desc)", schema = @Schema(type = "string", defaultValue = "asc"))
+            @RequestParam(defaultValue = "asc") String direction) {
+
+        Sort.Direction sortDirection = direction.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sort));
+
+        return ResponseEntity.ok(categoryService.searchCategoriesByName(name, pageable));
     }
 
     @Operation(summary = "Create a new category", description = "Creates a new category in the system")
@@ -105,12 +158,20 @@ public class CategoryController {
     public ResponseEntity<CategoryDTO> updateCategory(
             @Parameter(description = "ID of the category to update", required = true) @PathVariable Long id,
             @Parameter(description = "Updated category object", required = true) @RequestBody CategoryDTO categoryDTO) {
-        return categoryService.getCategoryById(id)
-                .map(existingCategory -> {
-                    categoryDTO.setId(id);
-                    return ResponseEntity.ok(categoryService.saveCategory(categoryDTO));
-                })
-                .orElse(ResponseEntity.notFound().build());
+        // Check if category exists, will throw ResourceNotFoundException if not found
+        categoryService.getCategoryById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Category", "id", id));
+
+        // Create a new CategoryDTO with the id from the path variable
+        CategoryDTO updatedDTO = new CategoryDTO(
+            id,
+            categoryDTO.name(),
+            categoryDTO.description(),
+            categoryDTO.parentId(),
+            categoryDTO.subcategoryIds(),
+            categoryDTO.productIds()
+        );
+        return ResponseEntity.ok(categoryService.saveCategory(updatedDTO));
     }
 
     @Operation(summary = "Delete a category", description = "Deletes a category by its ID")

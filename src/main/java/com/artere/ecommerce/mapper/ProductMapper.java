@@ -24,24 +24,24 @@ public class ProductMapper {
         if (product == null) {
             return null;
         }
-        
-        ProductDTO dto = new ProductDTO();
-        dto.setId(product.getId());
-        dto.setName(product.getName());
-        dto.setPrice(product.getPrice());
-        dto.setStockQuantity(product.getStockQuantity());
-        
-        // Set category IDs
-        if (product.getCategories() != null) {
-            Set<Long> categoryIds = product.getCategories().stream()
-                    .map(Category::getId)
-                    .collect(Collectors.toSet());
-            dto.setCategoryIds(categoryIds);
-        }
-        
-        return dto;
+
+        // Get category IDs
+        Set<Long> categoryIds = product.getCategories() != null ?
+                product.getCategories().stream()
+                        .map(Category::getId)
+                        .collect(Collectors.toSet()) :
+                null;
+
+        // Create a new ProductDTO using the constructor
+        return new ProductDTO(
+            product.getId(),
+            product.getName(),
+            product.getPrice(),
+            product.getStockQuantity(),
+            categoryIds
+        );
     }
-    
+
     /**
      * Convert a list of Product entities to a list of ProductDTOs
      * @param products the list of entities to convert
@@ -51,12 +51,12 @@ public class ProductMapper {
         if (products == null) {
             return null;
         }
-        
+
         return products.stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
-    
+
     /**
      * Convert a ProductDTO to a Product entity
      * Note: This method does not set relationships (categories)
@@ -68,16 +68,16 @@ public class ProductMapper {
         if (dto == null) {
             return null;
         }
-        
+
         Product product = new Product();
-        product.setId(dto.getId());
-        product.setName(dto.getName());
-        product.setPrice(dto.getPrice());
-        product.setStockQuantity(dto.getStockQuantity());
-        
+        product.setId(dto.id());
+        product.setName(dto.name());
+        product.setPrice(dto.price());
+        product.setStockQuantity(dto.stockQuantity());
+
         return product;
     }
-    
+
     /**
      * Update an existing Product entity with data from a ProductDTO
      * Note: This method does not update relationships (categories)
@@ -90,19 +90,19 @@ public class ProductMapper {
         if (product == null || dto == null) {
             return product;
         }
-        
-        if (dto.getName() != null) {
-            product.setName(dto.getName());
+
+        if (dto.name() != null) {
+            product.setName(dto.name());
         }
-        
-        if (dto.getPrice() != null) {
-            product.setPrice(dto.getPrice());
+
+        if (dto.price() != null) {
+            product.setPrice(dto.price());
         }
-        
-        if (dto.getStockQuantity() != null) {
-            product.setStockQuantity(dto.getStockQuantity());
+
+        if (dto.stockQuantity() != null) {
+            product.setStockQuantity(dto.stockQuantity());
         }
-        
+
         return product;
     }
 }
